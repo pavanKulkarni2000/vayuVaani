@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">ವಾಯು ವಾಣಿ</string>
+    <string name="fab_content_description">Reload list</string>
 </resources>

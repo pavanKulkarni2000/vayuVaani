@@ -1,23 +1,119 @@
 package com.example.vayuVaani
 
-import android.content.Context
 import android.content.Intent
-import android.content.UriPermission
 import android.net.Uri
 import android.os.Bundle
-import android.os.Environment
-import android.os.storage.StorageManager
-import android.provider.Settings
+import android.provider.MediaStore
+import android.support.v4.media.session.MediaSessionCompat
 import android.util.Log
+import android.view.View
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.documentfile.provider.DocumentFile
+import androidx.fragment.app.commit
 import androidx.recyclerview.widget.RecyclerView
-import com.example.vayuVaani.util.EmptyItemDecoration
-import com.example.vayuVaani.util.androidFolderTreeUriStr
-import com.example.vayuVaani.util.listAllFoldersWithMedia
-import com.example.vayuVaani.util.managePermissions
+import com.example.vayuVaani.fileList.FileAdapter
+import com.example.vayuVaani.fragments.MediaListActivity
+import com.example.vayuVaani.viewModel.FileListViewModel
+import com.example.vayuVaani.models.File
+import com.example.vayuVaani.models.FileType
+import com.example.vayuVaani.util.*
+import kotlinx.coroutines.*
+import java.net.URLConnection
+import java.nio.file.Paths
+import kotlin.io.path.name
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(R.layout.list_layout) {
+
+    private lateinit var adapter: FileAdapter
+    private lateinit var recyclerView: RecyclerView
+    private val fileListViewModel: FileListViewModel by viewModels()
+    private val scope = CoroutineScope(Job() + Dispatchers.Main)
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+//        if(savedInstanceState==null){
+//            supportFragmentManager.commit {
+//                setReorderingAllowed(true)
+//                add(R.id.list_layout,MediaListActivity())
+//            }
+//        }
+
+        managePermissions(this)
+
+        initRecyclerView()
+
+        initOtherControlls()
+    }
+
+    private fun initOtherControlls() {
+
+        onBackPressedDispatcher.addCallback(this, object: OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                when(fileListViewModel.folderView.value){
+                    true -> finish()
+                    false -> {
+                        fileListViewModel.updateFiles(mainFolderListCache)
+                        fileListViewModel.updateView(true)
+                    }
+                    null -> finish()
+                }
+            }
+        })
+        val fab: View = findViewById(R.id.fab)
+        fab.setOnClickListener {
+            scope.launch { fabOnClick() }
+        }
+    }
+
+    private fun initRecyclerView() {
+        adapter = FileAdapter(emptyList(), ::fileOnClick)
+        recyclerView = findViewById(R.id.recycler_view)
+        recyclerView.adapter = adapter
+        recyclerView.addItemDecoration(EmptyItemDecoration())
+        fileListViewModel.fileList.observe(this, adapter::updateList)
+    }
+
+    private suspend fun fabOnClick() {
+        coroutineScope {
+            val differed1= async { listFolder() }
+            val differed2= async { listAndroidFolder(context = applicationContext) }
+            val list=differed1.await()
+            val dataList=differed2.await()
+            Log.d(TAG, "fabOnClick: $list")
+            Log.d(TAG, "fabOnClick: $dataList")
+            fileListViewModel.updateFiles(list+dataList)
+        }
+    }
+
+    private fun fileOnClick(file: File) {
+        if(file.fileType== FileType.DIR){
+            fileListViewModel.updateView(false)
+            mainFolderListCache= fileListViewModel.fileList.value!!
+            scope.launch {
+                val newFiles=
+                if(file.isUri) {
+                    DocumentFile.fromTreeUri(applicationContext, Uri.parse(file.path))
+                        ?.let { documentFile ->
+                            getMediaInFolder(documentFile).map{
+                                File.fromDocFile(it, fileType(it.type))
+                            }
+                        } ?: emptyList()
+                } else
+                    getMediaInFolder(Paths.get(file.path)).map{
+                        File.fromPath(it,
+                            fileType(URLConnection.guessContentTypeFromName(it.name))
+                        )
+                    }
+                fileListViewModel.updateFiles(newFiles)
+            }
+        } else{
+
+        }
+
+    }
 
     val activityWithResultLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -44,50 +140,19 @@ class MainActivity : AppCompatActivity() {
                             Intent.FLAG_GRANT_WRITE_URI_PERMISSION
                 )
             }
-                    }
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
-
-//        requestAllFilesPermission()
-//        requestDocumentPermission("data")
-//        requestDocumentPermission("obb")
-        managePermissions(this)
-
-        val files = listAllFoldersWithMedia(context = applicationContext)
-
-        val fileAdapter = FileAdapter(files, ::fileOnClick)
-        val recyclerView: RecyclerView = findViewById(R.id.recycler_view)
-        recyclerView.adapter = fileAdapter
-        recyclerView.addItemDecoration(EmptyItemDecoration())
-
-    }
-
-    private fun fileOnClick(file: File) {
-
-    }
-
-    private fun requestAllFilesPermission() {
-        if (!Environment.isExternalStorageManager()) {
-            val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
-            intent.addCategory("android.intent.category.DEFAULT")
-            intent.data = Uri.fromParts("package", packageName, null)
-            activityWithResultLauncher.launch(intent)
         }
-    }
 
-    private fun requestDocumentPermission(folder: String) {
-        val scheme = androidFolderTreeUriStr(folder)
-        var uri = Uri.parse(scheme)
-        if (contentResolver.persistedUriPermissions.any { element: UriPermission ->
-                element.uri == uri &&
-                        element.isReadPermission &&
-                        element.isWritePermission
-            }) {
-            return
+    val requestPermissionLauncher =
+        registerForActivityResult(
+            ActivityResultContracts.RequestMultiplePermissions()
+        ) {
+            it.forEach{
+                    entry: Map.Entry<String, Boolean> ->  if(!entry.value){
+                Log.d(TAG, "${entry.key}: not allowed")
+                finish()
+            }
+            }
         }
-        uri = Uri.parse(scheme.replace("/tree/", "/document/"))
-        docTreeLauncher.launch(uri)
-    }
+
 }
+

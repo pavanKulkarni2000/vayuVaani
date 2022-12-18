@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.example.vayuVaani
+package com.example.vayuVaani.fileList
 
 import android.view.LayoutInflater
 import android.view.View
@@ -22,6 +22,9 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
+import com.example.vayuVaani.R
+import com.example.vayuVaani.models.File
+import com.example.vayuVaani.models.FileType
 
 class FileAdapter(private var files:List<File>, private val onClick: (File) -> Unit) :RecyclerView.Adapter<FileAdapter.FlowerViewHolder>(){
 
@@ -44,14 +47,24 @@ class FileAdapter(private var files:List<File>, private val onClick: (File) -> U
         fun bind(file: File) {
             currentFile = file
             flowerTextView.text = file.name
-            flowerImageView.setImageResource(R.drawable.folder)
+            flowerImageView.setImageResource(when(file.fileType){
+                FileType.DIR -> R.drawable.folder
+                FileType.AUDIO -> R.drawable.music
+                FileType.VIDEO -> R.drawable.video
+                FileType.OTHER -> R.drawable.unkown
+            })
         }
+    }
+
+    fun updateList(newList:List<File>){
+        files=newList
+        notifyDataSetChanged()
     }
 
     /* Creates and inflates view and return FlowerViewHolder. */
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): FlowerViewHolder {
         val view = LayoutInflater.from(parent.context)
-            .inflate(R.layout.flower_item, parent, false)
+            .inflate(R.layout.file_item, parent, false)
         return FlowerViewHolder(view, onClick)
     }
 

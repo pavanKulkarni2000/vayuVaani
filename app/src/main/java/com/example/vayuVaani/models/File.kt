@@ -14,8 +14,25 @@
  * limitations under the License.
  */
 
-package com.example.vayuVaani
+package com.example.vayuVaani.models
+
+import androidx.documentfile.provider.DocumentFile
+import java.nio.file.Path
+import kotlin.io.path.name
 
 data class File(
-    val name: String
-)
+    val name: String,
+    val path: String,
+    val fileType: FileType,
+    val isUri: Boolean
+) {
+    companion object {
+        fun fromPath(path: Path, type: FileType): File {
+            return File(path.fileName.name, path.toString(), type, false)
+        }
+
+        fun fromDocFile(doc: DocumentFile, type: FileType): File {
+            return File(doc.name ?: "Unnamed file", doc.uri.toString(), type, true)
+        }
+    }
+}

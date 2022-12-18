@@ -16,7 +16,6 @@
 
 apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
-apply plugin: 'kotlin-android-extensions'
 
 android {
     compileSdkVersion 33
@@ -55,13 +54,10 @@ dependencies {
     implementation "androidx.core:core-ktx:$rootProject.coreKtxVersion"
     implementation "androidx.constraintlayout:constraintlayout:$rootProject.constraintLayoutVersion"
     implementation "androidx.activity:activity-ktx:$rootProject.activityVersion"
-
-    // RecyclerView
+    implementation 'androidx.documentfile:documentfile:1.0.1'
+    implementation 'androidx.media:media:1.6.0'
+    implementation "androidx.fragment:fragment-ktx:$rootProject.fragmentVersion"
     implementation "androidx.recyclerview:recyclerview:$rootProject.recyclerViewVersion"
-
-    // Material design
     implementation "com.google.android.material:material:$rootProject.materialVersion"
-
-    // LiveData
     implementation "androidx.lifecycle:lifecycle-livedata-ktx:$rootProject.liveDataVersion"
 }
