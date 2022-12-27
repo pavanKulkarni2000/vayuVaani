@@ -16,6 +16,7 @@
 
 apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
+apply plugin: 'io.realm.kotlin'
 
 android {
     compileSdkVersion 33
@@ -45,6 +46,13 @@ android {
         jvmTarget = JavaVersion.VERSION_1_8.toString()
     }
     namespace 'com.example.vayuVaani'
+    sourceSets {
+        main {
+            java {
+                srcDirs 'src\\main\\java', 'src\\test'
+            }
+        }
+    }
 
 }
 
@@ -60,4 +68,7 @@ dependencies {
     implementation "androidx.recyclerview:recyclerview:$rootProject.recyclerViewVersion"
     implementation "com.google.android.material:material:$rootProject.materialVersion"
     implementation "androidx.lifecycle:lifecycle-livedata-ktx:$rootProject.liveDataVersion"
+    implementation 'org.videolan.android:libvlc-all:3.1.12'
+    implementation 'io.realm.kotlin:library-base:1.4.0'
+    testImplementation 'junit:junit:4.13.2'
 }

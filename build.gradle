@@ -29,6 +29,10 @@ buildscript {
     }
 }
 
+plugins {
+    id 'io.realm.kotlin' version '1.4.0' apply false
+}
+
 allprojects {
     repositories {
         google()
@@ -50,4 +54,5 @@ ext {
     constraintLayoutVersion = '2.1.4'
     activityVersion = '1.6.1'
     fragmentVersion = '1.5.5'
+    jUnitVersion = '4.13.2'
 }
